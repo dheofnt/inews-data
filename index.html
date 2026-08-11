@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Nielsen Rating Chatbot - Query data dengan natural language">
+    <title>iNews Data - Nielsen Chatbot</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+            max-height: 800px;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .setup-section {
+            padding: 20px 24px;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+            display: none;
+        }
+
+        .setup-section.active {
+            display: block;
+        }
+
+        .setup-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1f2937;
+        }
+
+        .setup-input {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .setup-input input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: monospace;
+        }
+
+        .setup-input button {
+            padding: 10px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .setup-input button:hover {
+            background: #5568d3;
+        }
+
+        .file-upload {
+            margin-bottom: 12px;
+        }
+
+        .file-upload input[type="file"] {
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .setup-info {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #1e40af;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 80%;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: #667eea;
+            color: white;
+            border-radius: 12px 2px 12px 12px;
+        }
+
+        .message.bot {
+            align-self: flex-start;
+            background: #f3f4f6;
+            color: #1f2937;
+            border-radius: 2px 12px 12px 12px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .message.bot pre {
+            background: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+            margin-top: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .message.error {
+            align-self: center;
+            background: #fee2e2;
+            color: #991b1b;
+            max-width: 90%;
+        }
+
+        .input-section {
+            padding: 16px 24px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 8px;
+            background: white;
+        }
+
+        .input-section input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .input-section input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .input-section button {
+            padding: 12px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .input-section button:hover {
+            background: #5568d3;
+        }
+
+        .input-section button:active {
+            transform: scale(0.98);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #dcfce7;
+            color: #166534;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+
+        .status-badge.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .toggle-setup {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 0;
+            opacity: 0.9;
+        }
+
+        .toggle-setup:hover {
+            opacity: 1;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .data-stats {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+            font-size: 12px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .stat-item strong {
+            color: #667eea;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                max-height: 100vh;
+                border-radius: 0;
+            }
+
+            .message {
+                max-width: 90%;
+            }
+
+            .header h1 {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h1>iNews Data</h1>
+                    <p>Nielsen Rating Chatbot</p>
+                </div>
+                <button class="toggle-setup" onclick="toggleSetup()">Setup Data</button>
+            </div>
+            <div style="margin-top: 12px; font-size: 12px; opacity: 0.85;">
+                Status: <span id="status-text">Ready</span><span id="status-badge" class="status-badge">Offline</span>
+            </div>
+        </div>
+
+        <div class="setup-section" id="setup-section">
+            <h3>📊 Setup Google Sheets API (Private)</h3>
+            
+            <div class="setup-info">
+                <strong>Langkah Setup:</strong><br>
+                1. Buat Google Sheet baru → Share dengan service account email<br>
+                2. Buat Google Cloud API key (Sheets API)<br>
+                3. Paste ID sheet & API key di bawah
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; color: #374151;">
+                    Google Sheet ID
+                </label>
+                <div class="setup-input">
+                    <input type="text" id="sheet-id" placeholder="1a2B3c4D5e6F7g8H9i0J1k2L3m4N5o6P7q8R9s0T" />
+                    <button onclick="saveSheetConfig()">Save</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; color: #374151;">
+                    API Key (Google Sheets)
+                </label>
+                <div class="setup-input">
+                    <input type="password" id="api-key" placeholder="AIzaSy..." />
+                    <button onclick="saveAPIKey()">Save</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; color: #374151;">
+                    Sheet Name (default: "A")
+                </label>
+                <div class="setup-input">
+                    <input type="text" id="sheet-name" placeholder="A" value="A" />
+                    <button onclick="saveSheetName()">Save</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; color: #374151;">
+                    Atau Upload File Excel/CSV
+                </label>
+                <div class="file-upload">
+                    <input type="file" id="file-upload" accept=".xlsx,.xls,.csv" onchange="handleFileUpload(event)" />
+                </div>
+            </div>
+
+            <button onclick="testConnection()" style="padding: 10px 16px; background: #10b981; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;">
+                🔗 Test Connection
+            </button>
+
+            <div id="connection-status" style="margin-top: 12px; font-size: 12px;"></div>
+        </div>
+
+        <div class="chat-container">
+            <div id="chat-messages">
+                <div class="message bot">
+                    👋 Selamat datang di <strong>iNews Data</strong>!<br><br>
+                    Saya bisa membantu Anda mencari informasi Nielsen rating. Coba tanya:
+                    <pre style="background: #f3f4f6; padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 12px;">
+• "Berapa share inews kemarin?"
+• "Ranking channel 04/01/2026?"
+• "Bandingkan inews vs tvone"
+• "TVR semua channel hari ini"</pre>
+                </div>
+            </div>
+
+            <div class="input-section">
+                <input 
+                    type="text" 
+                    id="question-input" 
+                    placeholder="Ketik pertanyaan Anda..." 
+                    onkeypress="if(event.key==='Enter') askQuestion()"
+                />
+                <button onclick="askQuestion()">Tanya</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sheetData = [];
+        let config = {
+            sheetId: localStorage.getItem('sheet-id') || '',
+            apiKey: localStorage.getItem('api-key') || '',
+            sheetName: localStorage.getItem('sheet-name') || 'A'
+        };
+
+        if (config.sheetId && config.apiKey) {
+            updateStatusBadge('connected', 'Connected');
+        }
+
+        function toggleSetup() {
+            const setupSection = document.getElementById('setup-section');
+            setupSection.classList.toggle('active');
+            document.getElementById('sheet-id').value = config.sheetId;
+            document.getElementById('sheet-name').value = config.sheetName;
+        }
+
+        function saveSheetConfig() {
+            const id = document.getElementById('sheet-id').value.trim();
+            if (!id) {
+                alert('Masukkan Google Sheet ID');
+                return;
+            }
+            config.sheetId = id;
+            localStorage.setItem('sheet-id', id);
+            alert('Sheet ID tersimpan!');
+        }
+
+        function saveAPIKey() {
+            const key = document.getElementById('api-key').value.trim();
+            if (!key) {
+                alert('Masukkan API Key');
+                return;
+            }
+            config.apiKey = key;
+            localStorage.setItem('api-key', key);
+            alert('API Key tersimpan!');
+        }
+
+        function saveSheetName() {
+            const name = document.getElementById('sheet-name').value.trim() || 'A';
+            config.sheetName = name;
+            localStorage.setItem('sheet-name', name);
+            alert(`Sheet name "` + name + `" tersimpan!`);
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    let data = [];
+                    if (file.name.endsWith('.csv')) {
+                        Papa.parse(file, {
+                            header: true,
+                            skipEmptyLines: true,
+                            complete: (results) => {
+                                sheetData = results.data;
+                                updateStatusBadge('connected', 'File Loaded: ' + sheetData.length + ' rows');
+                                addMessage('bot', '✅ File berhasil dimuat! ' + sheetData.length + ' data points siap diquery.');
+                            }
+                        });
+                    } else {
+                        const workbook = XLSX.read(e.target.result, { type: 'array' });
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                        data = XLSX.utils.sheet_to_json(worksheet);
+                        sheetData = data;
+                        updateStatusBadge('connected', 'File Loaded: ' + sheetData.length + ' rows');
+                        addMessage('bot', '✅ File berhasil dimuat! ' + sheetData.length + ' data points siap diquery.');
+                    }
+                } catch (error) {
+                    updateStatusBadge('error', 'Load Error');
+                    addMessage('error', '❌ Gagal membaca file: ' + error.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function testConnection() {
+            if (!config.apiKey || !config.sheetId) {
+                alert('Lengkapi Sheet ID dan API Key terlebih dahulu');
+                return;
+            }
+
+            const statusDiv = document.getElementById('connection-status');
+            statusDiv.innerHTML = '<span class="loading"></span> Testing connection...';
+
+            try {
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${config.sheetId}/values/${config.sheetName}?key=${config.apiKey}`;
+                const response = await fetch(url);
+                
+                if (!response.ok) throw new Error('API Error: ' + response.status);
+                
+                const data = await response.json();
+                sheetData = convertSheetsToJSON(data.values);
+                
+                updateStatusBadge('connected', 'Connected');
+                statusDiv.innerHTML = '✅ <strong style="color: #10b981;">Connected!</strong> ' + sheetData.length + ' rows loaded.';
+                addMessage('bot', '✅ Berhasil terhubung ke Google Sheets!\n\n' + sheetData.length + ' data points siap diquery.');
+            } catch (error) {
+                updateStatusBadge('error', 'Error');
+                statusDiv.innerHTML = '❌ <strong style="color: #dc2626;">Connection Failed</strong><br>' + error.message;
+                addMessage('error', 'Gagal connect ke Google Sheets: ' + error.message);
+            }
+        }
+
+        function convertSheetsToJSON(values) {
+            if (!values || values.length < 2) return [];
+            const headers = values[0];
+            return values.slice(1).map(row => {
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = row[index] || '';
+                });
+                return obj;
+            });
+        }
+
+        function updateStatusBadge(status, text) {
+            const badge = document.getElementById('status-badge');
+            const statusText = document.getElementById('status-text');
+            statusText.textContent = text;
+            badge.className = 'status-badge';
+            if (status === 'error') badge.classList.add('error');
+        }
+
+        function parseQuestion(q) {
+            const lower = q.toLowerCase().trim();
+            
+            let channel = null;
+            const channels = ['inews', 'tvone', 'metro', 'kompastv', 'rtv', 'mdtv', 'rcti', 'sctv', 'mnctv', 'trans'];
+            for (let ch of channels) {
+                if (lower.includes(ch)) {
+                    channel = ch.toUpperCase();
+                    break;
+                }
+            }
+            
+            let date = null;
+            const dateMatch = q.match(/\d{2}\/\d{2}\/\d{4}/);
+            if (dateMatch) {
+                date = dateMatch[0];
+            }
+            
+            return { question: lower, channel, date };
+        }
+
+        function queryData(channel, date) {
+            return sheetData.filter(row => {
+                if (channel && row.Channel !== channel) return false;
+                if (date && row.Date !== date) return false;
+                return true;
+            });
+        }
+
+        async function askQuestion() {
+            const input = document.getElementById('question-input');
+            const q = input.value.trim();
+            if (!q) return;
+            
+            addMessage('user', q);
+            input.value = '';
+
+            if (sheetData.length === 0) {
+                addMessage('error', '⚠️ Data belum dimuat. Setup Google Sheets atau upload file Excel/CSV terlebih dahulu.');
+                return;
+            }
+
+            const parsed = parseQuestion(q);
+            const results = queryData(parsed.channel, parsed.date);
+            
+            let answer = '';
+            
+            if (parsed.question.includes('berapa share') || parsed.question.includes('share')) {
+                if (parsed.channel && results.length > 0) {
+                    const share = results[0].Share;
+                    answer = `📊 Share ${parsed.channel} di tanggal ${parsed.date || 'hari ini'} adalah <strong>${share}%</strong>`;
+                } else if (parsed.channel) {
+                    answer = `❌ Data untuk ${parsed.channel} di tanggal ${parsed.date || 'hari ini'} tidak ditemukan.`;
+                } else if (results.length > 0) {
+                    const items = results.map(r => `${r.Channel}: ${r.Share}%`).join('\n');
+                    answer = `📊 Share semua channel:\n\n${items}`;
+                } else {
+                    answer = `❌ Tidak ada data untuk tanggal tersebut.`;
+                }
+            } else if (parsed.question.includes('ranking') || parsed.question.includes('peringkat')) {
+                const uniqueDates = [...new Set(sheetData.map(r => r.Date))];
+                const targetDate = parsed.date || uniqueDates[uniqueDates.length - 1];
+                const dateData = sheetData.filter(r => r.Date === targetDate);
+                
+                if (dateData.length === 0) {
+                    answer = `❌ Data untuk tanggal ${targetDate} tidak ditemukan.`;
+                } else {
+                    const sorted = [...dateData].sort((a, b) => parseFloat(b.Share) - parseFloat(a.Share));
+                    const ranking = sorted.map((r, i) => `${i+1}. ${r.Channel}: ${r.Share}% (TVR: ${r.TVR})`).join('\n');
+                    answer = `🏆 Ranking share di ${targetDate}:\n\n${ranking}`;
+                }
+            } else if (parsed.question.includes('bandingkan') || parsed.question.includes('compare')) {
+                if (parsed.channel && results.length > 0) {
+                    const item = results[0];
+                    answer = `📊 Data ${parsed.channel}:\n\nShare: ${item.Share}%\nTVR: ${item.TVR}\nTanggal: ${item.Date}`;
+                } else {
+                    answer = `❌ Data tidak ditemukan untuk query tersebut.`;
+                }
+            } else if (parsed.question.includes('tvr')) {
+                if (parsed.channel && results.length > 0) {
+                    const tvr = results[0].TVR;
+                    answer = `📺 TVR ${parsed.channel} di tanggal ${parsed.date || 'hari ini'} adalah <strong>${tvr}</strong>`;
+                } else {
+                    answer = `❌ Data TVR tidak ditemukan.`;
+                }
+            } else {
+                answer = `🤔 Maaf, saya tidak memahami pertanyaan. Coba tanya tentang:\n\n• Share channel\n• Ranking/peringkat\n• TVR\n• Bandingkan channel\n\nContoh: "Berapa share inews kemarin?"`;
+            }
+
+            setTimeout(() => addMessage('bot', answer), 200);
+        }
+
+        function addMessage(role, text) {
+            const messagesDiv = document.getElementById('chat-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message ' + role;
+            msgDiv.innerHTML = text;
+            messagesDiv.appendChild(msgDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        document.getElementById('question-input').focus();
+    </script>
+</body>
+</html>
