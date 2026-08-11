@@ -513,15 +513,36 @@
         }
 
         function convertSheetsToJSON(values) {
-            if (!values || values.length < 2) return [];
-            const headers = values[0];
-            return values.slice(1).map(row => {
+            if (!values || values.length === 0) return [];
+            
+            // Detect if first row is header or data
+            const firstRow = values[0];
+            let isHeader = false;
+            let headers = [];
+            let dataRows = values;
+            
+            // Check if first row looks like header (contains text like "Date", "Channel", etc)
+            const commonHeaders = ['date', 'channel', 'tvr', 'share', 'year', 'month', 'week', 'rating', 'tanggal', 'saluran'];
+            const firstRowLower = firstRow.map(h => String(h).toLowerCase());
+            
+            if (firstRowLower.some(h => commonHeaders.some(ch => h.includes(ch)))) {
+                isHeader = true;
+                headers = firstRow;
+                dataRows = values.slice(1);
+            } else {
+                // No header detected, create generic headers
+                headers = firstRow.map((_, i) => `Col${i + 1}`);
+                dataRows = values;
+            }
+            
+            // Convert to JSON
+            return dataRows.map(row => {
                 const obj = {};
                 headers.forEach((header, index) => {
-                    obj[header] = row[index] || '';
+                    obj[String(header).trim()] = row[index] || '';
                 });
                 return obj;
-            });
+            }).filter(row => Object.values(row).some(v => v)); // Remove empty rows
         }
 
         function updateStatusBadge(status, text) {
@@ -545,18 +566,39 @@
             }
             
             let date = null;
-            const dateMatch = q.match(/\d{2}\/\d{2}\/\d{4}/);
+            const dateMatch = q.match(/\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2}/);
             if (dateMatch) {
                 date = dateMatch[0];
             }
             
             return { question: lower, channel, date };
         }
+        
+        // Helper: find column by keyword (flexible)
+        function findColumn(columnName) {
+            if (!sheetData || sheetData.length === 0) return null;
+            const row = sheetData[0];
+            const keys = Object.keys(row);
+            const search = columnName.toLowerCase();
+            return keys.find(k => k.toLowerCase().includes(search));
+        }
 
         function queryData(channel, date) {
+            if (!sheetData || sheetData.length === 0) return [];
+            
+            // Find column names flexibly
+            const channelCol = findColumn('channel') || findColumn('saluran');
+            const dateCol = findColumn('date') || findColumn('tanggal');
+            
             return sheetData.filter(row => {
-                if (channel && row.Channel !== channel) return false;
-                if (date && row.Date !== date) return false;
+                if (channel && channelCol) {
+                    const rowChannel = String(row[channelCol]).toUpperCase().trim();
+                    if (!rowChannel.includes(channel)) return false;
+                }
+                if (date && dateCol) {
+                    const rowDate = String(row[dateCol]).trim();
+                    if (!rowDate.includes(date)) return false;
+                }
                 return true;
             });
         }
@@ -577,48 +619,64 @@
             const parsed = parseQuestion(q);
             const results = queryData(parsed.channel, parsed.date);
             
+            // Find column names flexibly
+            const channelCol = findColumn('channel') || findColumn('saluran');
+            const shareCol = findColumn('share') || findColumn('presentase') || findColumn('persen');
+            const dateCol = findColumn('date') || findColumn('tanggal');
+            const tvrCol = findColumn('tvr') || findColumn('rating');
+            
             let answer = '';
             
             if (parsed.question.includes('berapa share') || parsed.question.includes('share')) {
-                if (parsed.channel && results.length > 0) {
-                    const share = results[0].Share;
-                    answer = `📊 Share ${parsed.channel} di tanggal ${parsed.date || 'hari ini'} adalah <strong>${share}%</strong>`;
+                if (parsed.channel && results.length > 0 && shareCol) {
+                    const share = results[0][shareCol];
+                    answer = `📊 Share ${parsed.channel} adalah <strong>${share}</strong>`;
                 } else if (parsed.channel) {
-                    answer = `❌ Data untuk ${parsed.channel} di tanggal ${parsed.date || 'hari ini'} tidak ditemukan.`;
-                } else if (results.length > 0) {
-                    const items = results.map(r => `${r.Channel}: ${r.Share}%`).join('\n');
+                    answer = `❌ Data untuk ${parsed.channel} tidak ditemukan.`;
+                } else if (results.length > 0 && channelCol && shareCol) {
+                    const items = results.map(r => `${r[channelCol]}: ${r[shareCol]}`).join('\n');
                     answer = `📊 Share semua channel:\n\n${items}`;
                 } else {
-                    answer = `❌ Tidak ada data untuk tanggal tersebut.`;
+                    answer = `❌ Tidak ada data.`;
                 }
             } else if (parsed.question.includes('ranking') || parsed.question.includes('peringkat')) {
-                const uniqueDates = [...new Set(sheetData.map(r => r.Date))];
-                const targetDate = parsed.date || uniqueDates[uniqueDates.length - 1];
-                const dateData = sheetData.filter(r => r.Date === targetDate);
-                
-                if (dateData.length === 0) {
-                    answer = `❌ Data untuk tanggal ${targetDate} tidak ditemukan.`;
+                if (sheetData.length > 0 && channelCol && shareCol) {
+                    const sorted = [...sheetData].sort((a, b) => parseFloat(b[shareCol]) - parseFloat(a[shareCol]));
+                    const ranking = sorted.map((r, i) => `${i+1}. ${r[channelCol]}: ${r[shareCol]}`).slice(0, 10).join('\n');
+                    answer = `🏆 Ranking:\n\n${ranking}`;
                 } else {
-                    const sorted = [...dateData].sort((a, b) => parseFloat(b.Share) - parseFloat(a.Share));
-                    const ranking = sorted.map((r, i) => `${i+1}. ${r.Channel}: ${r.Share}% (TVR: ${r.TVR})`).join('\n');
-                    answer = `🏆 Ranking share di ${targetDate}:\n\n${ranking}`;
+                    answer = `❌ Tidak ada data ranking.`;
                 }
             } else if (parsed.question.includes('bandingkan') || parsed.question.includes('compare')) {
                 if (parsed.channel && results.length > 0) {
                     const item = results[0];
-                    answer = `📊 Data ${parsed.channel}:\n\nShare: ${item.Share}%\nTVR: ${item.TVR}\nTanggal: ${item.Date}`;
+                    const displayData = Object.entries(item)
+                        .filter(([k, v]) => v)
+                        .map(([k, v]) => `${k}: ${v}`)
+                        .join('\n');
+                    answer = `📊 Data ${parsed.channel}:\n\n${displayData}`;
                 } else {
-                    answer = `❌ Data tidak ditemukan untuk query tersebut.`;
+                    answer = `❌ Data tidak ditemukan.`;
                 }
-            } else if (parsed.question.includes('tvr')) {
-                if (parsed.channel && results.length > 0) {
-                    const tvr = results[0].TVR;
-                    answer = `📺 TVR ${parsed.channel} di tanggal ${parsed.date || 'hari ini'} adalah <strong>${tvr}</strong>`;
+            } else if (parsed.question.includes('tvr') || parsed.question.includes('rating')) {
+                if (parsed.channel && results.length > 0 && tvrCol) {
+                    const tvr = results[0][tvrCol];
+                    answer = `📺 TVR ${parsed.channel} adalah <strong>${tvr}</strong>`;
                 } else {
                     answer = `❌ Data TVR tidak ditemukan.`;
                 }
             } else {
-                answer = `🤔 Maaf, saya tidak memahami pertanyaan. Coba tanya tentang:\n\n• Share channel\n• Ranking/peringkat\n• TVR\n• Bandingkan channel\n\nContoh: "Berapa share inews kemarin?"`;
+                // Generic data display
+                if (results.length > 0) {
+                    const item = results[0];
+                    const displayData = Object.entries(item)
+                        .filter(([k, v]) => v)
+                        .map(([k, v]) => `${k}: ${v}`)
+                        .join('\n');
+                    answer = `📊 Data:\n\n${displayData}`;
+                } else {
+                    answer = `🤔 Coba tanya tentang:\n\n• Share channel\n• Ranking\n• TVR/Rating\n• Bandingkan channel`;
+                }
             }
 
             setTimeout(() => addMessage('bot', answer), 200);
