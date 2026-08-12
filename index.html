@@ -635,7 +635,54 @@
             
             let answer = '';
             
-            if (parsed.question.includes('berapa share') || parsed.question.includes('share')) {
+            // Check for trend/chart queries
+            if (q.toLowerCase().includes('trend') || q.toLowerCase().includes('grafik') || q.toLowerCase().includes('chart')) {
+                // Extract month and year from query
+                const months = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+                let month = null;
+                let monthName = '';
+                
+                for (let i = 0; i < months.length; i++) {
+                    if (q.toLowerCase().includes(months[i])) {
+                        month = i + 1;
+                        monthName = months[i].charAt(0).toUpperCase() + months[i].slice(1);
+                        break;
+                    }
+                }
+                
+                const yearMatch = q.match(/20\d{2}|2\d{3}/);
+                const year = yearMatch ? parseInt(yearMatch[0]) : null;
+                
+                if (parsed.channel) {
+                    const trendResponse = generateTrendResponse(parsed.channel, month, year);
+                    if (trendResponse) {
+                        answer = trendResponse;
+                    } else {
+                        answer = `❌ Data trend untuk ${parsed.channel} ${monthName || ''} ${year || ''} tidak ditemukan.`;
+                    }
+                } else {
+                    answer = `🤔 Silakan sebutkan channel. Contoh: "trend share inews januari 2026"`;
+                }
+            } else if (q.toLowerCase().includes('ranking') && (q.toLowerCase().includes('chart') || q.toLowerCase().includes('grafik'))) {
+                // Ranking with chart
+                if (sheetData.length > 0 && channelCol && shareCol) {
+                    const sorted = [...sheetData].sort((a, b) => parseFloat(normalizeNumber(b[shareCol])) - parseFloat(normalizeNumber(a[shareCol])));
+                    const top10 = sorted.slice(0, 10);
+                    const labels = top10.map(r => r[channelCol]);
+                    const data = top10.map(r => parseFloat(normalizeNumber(r[shareCol])));
+                    
+                    answer = `🏆 <strong>Ranking Top 10 Channel</strong><br><br>`;
+                    answer += top10.map((r, i) => `${i+1}. ${r[channelCol]}: ${normalizeNumber(r[shareCol])}`).join('<br>');
+                    answer += '<br><br>';
+                    answer += generateChart('bar', labels, data, 'Share Channel');
+                } else {
+                    answer = `❌ Tidak ada data ranking.`;
+                }
+            } else if (false) { // placeholder for other chart types
+                // future chart types
+            } else {
+                // Regular text queries
+                if (parsed.question.includes('berapa share') || parsed.question.includes('share')) {
                 if (parsed.channel && results.length > 0 && shareCol) {
                     const share = normalizeNumber(results[0][shareCol]);
                     answer = `📊 Share ${parsed.channel} adalah <strong>${share}</strong>`;
@@ -676,17 +723,18 @@
                 } else {
                     answer = `❌ Data TVR tidak ditemukan.`;
                 }
-            } else {
-                // Generic data display
-                if (results.length > 0) {
-                    const item = results[0];
-                    const displayData = Object.entries(item)
-                        .filter(([k, v]) => v)
-                        .map(([k, v]) => `${k}: ${v}`)
-                        .join('\n');
-                    answer = `📊 Data:\n\n${displayData}`;
                 } else {
-                    answer = `🤔 Coba tanya tentang:\n\n• Share channel\n• Ranking\n• TVR/Rating\n• Bandingkan channel`;
+                    // Generic data display
+                    if (results.length > 0) {
+                        const item = results[0];
+                        const displayData = Object.entries(item)
+                            .filter(([k, v]) => v)
+                            .map(([k, v]) => `${k}: ${v}`)
+                            .join('\n');
+                        answer = `📊 Data:\n\n${displayData}`;
+                    } else {
+                        answer = `🤔 Coba tanya tentang:\n\n• Share channel\n• Ranking\n• TVR/Rating\n• Bandingkan channel\n• Trend share [channel] [bulan] [tahun]`;
+                    }
                 }
             }
 
@@ -700,6 +748,115 @@
             msgDiv.innerHTML = text;
             messagesDiv.appendChild(msgDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Generate Chart HTML
+        function generateChart(type, labels, dataValues, title, chartColor = '#667eea') {
+            const chartId = 'chart-' + Date.now();
+            
+            // Create script that will load Chart.js and render
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js';
+            script.onload = function() {
+                setTimeout(() => {
+                    const canvas = document.getElementById(chartId);
+                    if (canvas && window.Chart) {
+                        new window.Chart(canvas, {
+                            type: type,
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: title,
+                                    data: dataValues,
+                                    borderColor: chartColor,
+                                    backgroundColor: type === 'line' ? 'rgba(102, 126, 234, 0.1)' : 'rgba(102, 126, 234, 0.6)',
+                                    borderWidth: 2,
+                                    tension: 0.4,
+                                    fill: type === 'line',
+                                    pointRadius: 5,
+                                    pointBackgroundColor: chartColor,
+                                    pointBorderColor: '#fff',
+                                    pointBorderWidth: 2
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: true, labels: { font: { size: 12 } } }
+                                },
+                                scales: {
+                                    y: { beginAtZero: true, ticks: { font: { size: 11 } } },
+                                    x: { ticks: { font: { size: 11 } } }
+                                }
+                            }
+                        });
+                    }
+                }, 100);
+            };
+            
+            const html = `<div style="width: 100%; height: 300px; margin-top: 10px;"><canvas id="${chartId}"></canvas></div>`;
+            
+            // Add script to body
+            document.body.appendChild(script);
+            return html;
+        }
+
+        // Extract trend data dan generate response dengan chart
+        function generateTrendResponse(channel, month, year) {
+            if (!sheetData || sheetData.length === 0) return null;
+            
+            const channelCol = findColumn('channel') || findColumn('saluran');
+            const dateCol = findColumn('date') || findColumn('tanggal');
+            const shareCol = findColumn('share') || findColumn('presentase');
+            
+            // Filter data by channel, month, year
+            const trendData = sheetData.filter(row => {
+                const rowChannel = String(row[channelCol] || '').toUpperCase().trim();
+                const rowDate = String(row[dateCol] || '').trim();
+                
+                if (channel && !rowChannel.includes(channel)) return false;
+                
+                // Parse date and check month/year
+                if (month || year) {
+                    const parts = rowDate.split('/');
+                    if (parts.length === 3) {
+                        const d = parseInt(parts[0]);
+                        const m = parseInt(parts[1]);
+                        const y = parseInt(parts[2]);
+                        if (month && m !== month) return false;
+                        if (year && y !== year) return false;
+                    }
+                }
+                return true;
+            });
+            
+            if (trendData.length === 0) return null;
+            
+            // Prepare chart data
+            const labels = trendData.map(r => String(r[dateCol] || ''));
+            const data = trendData.map(r => parseFloat(normalizeNumber(r[shareCol] || 0)));
+            
+            // Calculate stats
+            const avg = (data.reduce((a, b) => a + b, 0) / data.length).toFixed(2);
+            const max = Math.max(...data).toFixed(2);
+            const min = Math.min(...data).toFixed(2);
+            const maxDate = labels[data.indexOf(Math.max(...data))];
+            const minDate = labels[data.indexOf(Math.min(...data))];
+            
+            // Text response
+            const textResponse = `
+📊 <strong>Trend Share ${channel} ${month ? 'Bulan ' + month : ''} ${year}</strong><br><br>
+Rata-rata: <strong>${avg}%</strong><br>
+Tertinggi: <strong>${max}%</strong> (${maxDate})<br>
+Terendah: <strong>${min}%</strong> (${minDate})<br>
+Total data points: <strong>${data.length}</strong>
+            `;
+            
+            // Chart
+            const chartHtml = generateChart('line', labels, data, `Share ${channel}`);
+            
+            return textResponse + '<br><br>' + chartHtml;
         }
 
         document.getElementById('question-input').focus();
