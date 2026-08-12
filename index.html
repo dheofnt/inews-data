@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Based on Nielsen - Query data dengan natural language">
-    <title>iNews Data - Based on Nielsen </title>
+    <meta name="description" content="Nielsen Rating Chatbot - Query data dengan natural language">
+    <title>iNews Data - Nielsen Chatbot</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.4.1/papaparse.min.js"></script>
     <style>
@@ -412,7 +412,6 @@
 
         if (config.sheetId && config.apiKey) {
             updateStatusBadge('connected', 'Connected');
-            setTimeout(() => testConnection(), 1000);
         }
 
         function toggleSetup() {
@@ -584,6 +583,14 @@
             return keys.find(k => k.toLowerCase().includes(search));
         }
 
+        // Normalize number (handle both dot and comma)
+        function normalizeNumber(val) {
+            if (!val) return val;
+            const str = String(val).trim();
+            // Replace comma with dot
+            return str.replace(',', '.');
+        }
+        
         function queryData(channel, date) {
             if (!sheetData || sheetData.length === 0) return [];
             
@@ -630,20 +637,20 @@
             
             if (parsed.question.includes('berapa share') || parsed.question.includes('share')) {
                 if (parsed.channel && results.length > 0 && shareCol) {
-                    const share = results[0][shareCol];
+                    const share = normalizeNumber(results[0][shareCol]);
                     answer = `📊 Share ${parsed.channel} adalah <strong>${share}</strong>`;
                 } else if (parsed.channel) {
                     answer = `❌ Data untuk ${parsed.channel} tidak ditemukan.`;
                 } else if (results.length > 0 && channelCol && shareCol) {
-                    const items = results.map(r => `${r[channelCol]}: ${r[shareCol]}`).join('\n');
+                    const items = results.map(r => `${r[channelCol]}: ${normalizeNumber(r[shareCol])}`).join('\n');
                     answer = `📊 Share semua channel:\n\n${items}`;
                 } else {
                     answer = `❌ Tidak ada data.`;
                 }
             } else if (parsed.question.includes('ranking') || parsed.question.includes('peringkat')) {
                 if (sheetData.length > 0 && channelCol && shareCol) {
-                    const sorted = [...sheetData].sort((a, b) => parseFloat(b[shareCol]) - parseFloat(a[shareCol]));
-                    const ranking = sorted.map((r, i) => `${i+1}. ${r[channelCol]}: ${r[shareCol]}`).slice(0, 10).join('\n');
+                    const sorted = [...sheetData].sort((a, b) => parseFloat(normalizeNumber(b[shareCol])) - parseFloat(normalizeNumber(a[shareCol])));
+                    const ranking = sorted.map((r, i) => `${i+1}. ${r[channelCol]}: ${normalizeNumber(r[shareCol])}`).slice(0, 10).join('\n');
                     answer = `🏆 Ranking:\n\n${ranking}`;
                 } else {
                     answer = `❌ Tidak ada data ranking.`;
@@ -653,7 +660,10 @@
                     const item = results[0];
                     const displayData = Object.entries(item)
                         .filter(([k, v]) => v)
-                        .map(([k, v]) => `${k}: ${v}`)
+                        .map(([k, v]) => {
+                            const normalizedVal = normalizeNumber(v);
+                            return `${k}: ${normalizedVal}`;
+                        })
                         .join('\n');
                     answer = `📊 Data ${parsed.channel}:\n\n${displayData}`;
                 } else {
@@ -661,7 +671,7 @@
                 }
             } else if (parsed.question.includes('tvr') || parsed.question.includes('rating')) {
                 if (parsed.channel && results.length > 0 && tvrCol) {
-                    const tvr = results[0][tvrCol];
+                    const tvr = normalizeNumber(results[0][tvrCol]);
                     answer = `📺 TVR ${parsed.channel} adalah <strong>${tvr}</strong>`;
                 } else {
                     answer = `❌ Data TVR tidak ditemukan.`;
