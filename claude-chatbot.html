@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Nielsen Analytics - Claude AI Chatbot">
+    <title>Nielsen Analytics - Claude Chatbot</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+            max-height: 800px;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+            align-items: center;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            font-size: 12px;
+            color: white;
+        }
+
+        .status-badge.connected {
+            background: #10b981;
+        }
+
+        .status-badge.error {
+            background: #ef4444;
+        }
+
+        .setup-button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .setup-button:hover {
+            background: #f3f4f6;
+        }
+
+        .setup-panel {
+            padding: 24px;
+            border-bottom: 1px solid #e5e7eb;
+            background: #f9fafb;
+            display: none;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .setup-panel.active {
+            display: block;
+        }
+
+        .setup-field {
+            margin-bottom: 16px;
+        }
+
+        .setup-field label {
+            display: block;
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .setup-field input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .setup-field button {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.6;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            background: #667eea;
+            color: white;
+            align-self: flex-end;
+            border-radius: 12px 12px 0 12px;
+        }
+
+        .message.assistant {
+            background: #f3f4f6;
+            color: #1f2937;
+            align-self: flex-start;
+            border-radius: 12px 12px 12px 0;
+        }
+
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            align-self: flex-start;
+        }
+
+        .message.loading {
+            background: #dbeafe;
+            color: #1e40af;
+            align-self: flex-start;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #667eea;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .input-section {
+            padding: 16px 24px;
+            border-top: 1px solid #e5e7eb;
+            background: white;
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-section input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 24px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .input-section input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .input-section button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .input-section button:hover {
+            background: #5568d3;
+        }
+
+        .input-section button:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                height: 100vh;
+                max-height: none;
+                border-radius: 0;
+            }
+
+            .message {
+                max-width: 95%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🤖 Nielsen Analytics</h1>
+            <p>Chat dengan Claude AI untuk analisis data Nielsen</p>
+            <div class="header-right">
+                <span class="status-badge" id="statusBadge">Offline</span>
+                <button class="setup-button" onclick="toggleSetup()">⚙️ Setup</button>
+            </div>
+        </div>
+
+        <!-- Setup Panel -->
+        <div class="setup-panel" id="setupPanel">
+            <div class="setup-field">
+                <label>Vercel API URL</label>
+                <input type="text" id="vercelUrl" placeholder="https://your-project.vercel.app">
+                <button onclick="saveVercelUrl()">Save</button>
+            </div>
+            <div class="setup-field">
+                <label>Google Sheet ID</label>
+                <input type="text" id="sheetId" placeholder="Sheet ID...">
+                <button onclick="saveSheetId()">Save</button>
+            </div>
+            <div class="setup-field">
+                <label>Google Sheets API Key</label>
+                <input type="password" id="sheetsApiKey" placeholder="AIzaSy...">
+                <button onclick="saveSheetsKey()">Save</button>
+            </div>
+            <div class="setup-field">
+                <label>Sheet Name</label>
+                <input type="text" id="sheetName" value="A" placeholder="Sheet name...">
+                <button onclick="saveSheetName()">Save</button>
+            </div>
+            <button style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;" onclick="testConnection()">🔗 Test Connection</button>
+        </div>
+
+        <!-- Messages -->
+        <div class="messages-container" id="messagesContainer"></div>
+
+        <!-- Input -->
+        <div class="input-section">
+            <input 
+                type="text" 
+                id="questionInput" 
+                placeholder="Tanya tentang data Nielsen..." 
+                onkeypress="if(event.key==='Enter') sendMessage()"
+                autocomplete="off"
+            >
+            <button id="sendButton" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.4.1/papaparse.min.js"></script>
+    <script>
+        let sheetData = [];
+        let config = {
+            vercelUrl: localStorage.getItem('vercel-url') || '',
+            sheetId: localStorage.getItem('sheet-id') || '',
+            sheetsApiKey: localStorage.getItem('sheets-key') || '',
+            sheetName: localStorage.getItem('sheet-name') || 'A'
+        };
+
+        function toggleSetup() {
+            document.getElementById('setupPanel').classList.toggle('active');
+        }
+
+        function saveVercelUrl() {
+            const url = document.getElementById('vercelUrl').value.trim();
+            if (!url) { alert('Masukkan Vercel URL'); return; }
+            config.vercelUrl = url;
+            localStorage.setItem('vercel-url', url);
+            alert('Vercel URL saved!');
+        }
+
+        function saveSheetId() {
+            const id = document.getElementById('sheetId').value.trim();
+            if (!id) { alert('Masukkan Sheet ID'); return; }
+            config.sheetId = id;
+            localStorage.setItem('sheet-id', id);
+            alert('Sheet ID saved!');
+        }
+
+        function saveSheetsKey() {
+            const key = document.getElementById('sheetsApiKey').value.trim();
+            if (!key) { alert('Masukkan API Key'); return; }
+            config.sheetsApiKey = key;
+            localStorage.setItem('sheets-key', key);
+            alert('API Key saved!');
+        }
+
+        function saveSheetName() {
+            const name = document.getElementById('sheetName').value.trim() || 'A';
+            config.sheetName = name;
+            localStorage.setItem('sheet-name', name);
+            alert('Sheet Name saved!');
+        }
+
+        async function testConnection() {
+            if (!config.sheetsApiKey || !config.sheetId) {
+                alert('Lengkapi Sheet ID dan API Key');
+                return;
+            }
+
+            try {
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${config.sheetId}/values/${config.sheetName}?key=${config.sheetsApiKey}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Sheet Error');
+                
+                const data = await response.json();
+                sheetData = convertSheetsToJSON(data.values);
+                
+                updateStatus('Connected', 'connected');
+                alert('✅ Connected! ' + sheetData.length + ' rows loaded.');
+            } catch (error) {
+                updateStatus('Error', 'error');
+                alert('❌ Connection Failed: ' + error.message);
+            }
+        }
+
+        function convertSheetsToJSON(values) {
+            if (!values || values.length === 0) return [];
+            const headers = values[0];
+            return values.slice(1).map(row => {
+                const obj = {};
+                headers.forEach((h, i) => obj[String(h).trim()] = row[i] || '');
+                return obj;
+            }).filter(r => Object.values(r).some(v => v));
+        }
+
+        function updateStatus(text, status = 'offline') {
+            const badge = document.getElementById('statusBadge');
+            badge.textContent = text;
+            badge.className = 'status-badge ' + status;
+        }
+
+        function addMessage(role, text) {
+            const container = document.getElementById('messagesContainer');
+            const msg = document.createElement('div');
+            msg.className = 'message ' + role;
+            msg.innerHTML = text;
+            container.appendChild(msg);
+            container.scrollTop = container.scrollHeight;
+            return msg;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('questionInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const sendButton = document.getElementById('sendButton');
+            sendButton.disabled = true;
+
+            // Add user message
+            addMessage('user', message);
+            input.value = '';
+
+            // Check setup
+            if (!config.vercelUrl) {
+                addMessage('error', '❌ Vercel URL belum di-setup. Buka ⚙️ Setup');
+                sendButton.disabled = false;
+                return;
+            }
+
+            if (sheetData.length === 0) {
+                addMessage('error', '⚠️ Data belum dimuat. Test Connection terlebih dahulu.');
+                sendButton.disabled = false;
+                return;
+            }
+
+            // Show loading
+            const loadingMsg = addMessage('loading', '<span class="loading-spinner"></span> Claude sedang berpikir...');
+
+            try {
+                // Call Vercel backend
+                const response = await fetch(`${config.vercelUrl}/api/claude`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        sheetData: sheetData
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'API Error');
+                }
+
+                // Remove loading message
+                loadingMsg.remove();
+
+                // Add Claude response
+                addMessage('assistant', data.response);
+
+            } catch (error) {
+                loadingMsg.remove();
+                addMessage('error', '❌ Error: ' + error.message);
+            }
+
+            sendButton.disabled = false;
+            document.getElementById('questionInput').focus();
+        }
+
+        // Load config on startup
+        if (config.vercelUrl && config.sheetId && config.sheetsApiKey) {
+            updateStatus('Ready', 'connected');
+        }
+
+        document.getElementById('questionInput').focus();
+    </script>
+</body>
+</html>
