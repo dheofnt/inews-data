@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Nielsen Rating Chatbot - Query data dengan natural language">
-    <title>iNews Data - Nielsen Chatbot</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.4.1/papaparse.min.js"></script>
+    <meta name="description" content="Nielsen Analytics - Powered by Claude AI">
+    <title>Nielsen Analytics - Claude AI Dashboard</title>
     <style>
         * {
             margin: 0;
@@ -15,255 +13,296 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             padding: 20px;
         }
 
         .container {
-            width: 100%;
-            max-width: 900px;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            display: flex;
-            flex-direction: column;
-            height: 90vh;
-            max-height: 800px;
-            overflow: hidden;
+            max-width: 1400px;
+            margin: 0 auto;
         }
 
         .header {
-            padding: 20px 24px;
-            border-bottom: 1px solid #e5e7eb;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            padding: 30px 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
         .header h1 {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 4px;
+            font-size: 28px;
+            margin-bottom: 8px;
         }
 
         .header p {
-            font-size: 13px;
+            font-size: 14px;
             opacity: 0.9;
         }
 
-        .setup-section {
-            padding: 20px 24px;
-            background: #f9fafb;
-            border-bottom: 1px solid #e5e7eb;
+        .setup-button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 16px;
+            transition: background 0.2s;
+        }
+
+        .setup-button:hover {
+            background: #f3f4f6;
+        }
+
+        .setup-panel {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             display: none;
         }
 
-        .setup-section.active {
+        .setup-panel.active {
             display: block;
         }
 
-        .setup-section h3 {
+        .setup-panel h3 {
             font-size: 14px;
             font-weight: 600;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
             color: #1f2937;
         }
 
-        .setup-input {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 12px;
+        .setup-field {
+            margin-bottom: 16px;
         }
 
-        .setup-input input {
-            flex: 1;
-            padding: 10px 12px;
-            border: 1px solid #d1d5db;
+        .setup-field label {
+            display: block;
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .setup-field input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e5e7eb;
             border-radius: 6px;
             font-size: 13px;
-            font-family: monospace;
         }
 
-        .setup-input button {
-            padding: 10px 16px;
+        .setup-field button {
+            padding: 8px 16px;
             background: #667eea;
             color: white;
             border: none;
             border-radius: 6px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .setup-input button:hover {
-            background: #5568d3;
-        }
-
-        .file-upload {
-            margin-bottom: 12px;
-        }
-
-        .file-upload input[type="file"] {
-            padding: 8px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-        }
-
-        .setup-info {
-            background: #eff6ff;
-            border-left: 4px solid #3b82f6;
-            padding: 12px;
-            border-radius: 4px;
             font-size: 12px;
-            color: #1e40af;
-            margin-bottom: 12px;
-            line-height: 1.5;
+            cursor: pointer;
+            margin-top: 6px;
         }
 
-        .chat-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        #chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .message {
-            padding: 12px 16px;
-            border-radius: 12px;
-            max-width: 80%;
-            word-wrap: break-word;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-
-        .message.user {
-            align-self: flex-end;
-            background: #667eea;
-            color: white;
-            border-radius: 12px 2px 12px 12px;
-        }
-
-        .message.bot {
-            align-self: flex-start;
-            background: #f3f4f6;
-            color: #1f2937;
-            border-radius: 2px 12px 12px 12px;
-            border: 1px solid #e5e7eb;
-        }
-
-        .message.bot pre {
-            background: #fff;
-            padding: 8px;
-            border-radius: 4px;
-            overflow-x: auto;
-            font-size: 12px;
-            margin-top: 8px;
-            border: 1px solid #e5e7eb;
-        }
-
-        .message.error {
-            align-self: center;
-            background: #fee2e2;
-            color: #991b1b;
-            max-width: 90%;
-        }
-
-        .input-section {
-            padding: 16px 24px;
-            border-top: 1px solid #e5e7eb;
-            display: flex;
-            gap: 8px;
+        .chat-section {
             background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
-        .input-section input {
+        .chat-input-wrapper {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .chat-input-wrapper input {
             flex: 1;
-            padding: 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
+            padding: 12px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
             font-size: 14px;
             font-family: inherit;
         }
 
-        .input-section input:focus {
+        .chat-input-wrapper input:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        .input-section button {
-            padding: 12px 20px;
+        .chat-input-wrapper button {
+            padding: 12px 24px;
             background: #667eea;
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 14px;
+            border-radius: 6px;
             font-weight: 500;
             cursor: pointer;
             transition: background 0.2s;
         }
 
-        .input-section button:hover {
+        .chat-input-wrapper button:hover {
             background: #5568d3;
         }
 
-        .input-section button:active {
-            transform: scale(0.98);
+        #chatMessages {
+            max-height: 400px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 16px 0;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 16px;
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            background: #dcfce7;
-            color: #166534;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 500;
-            margin-left: 8px;
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.5;
         }
 
-        .status-badge.error {
+        .message.user {
+            background: #667eea;
+            color: white;
+            align-self: flex-end;
+            max-width: 80%;
+            margin-left: auto;
+        }
+
+        .message.assistant {
+            background: #f3f4f6;
+            color: #1f2937;
+            align-self: flex-start;
+        }
+
+        .message.error {
             background: #fee2e2;
             color: #991b1b;
         }
 
-        .toggle-setup {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 12px;
-            cursor: pointer;
-            text-decoration: underline;
-            padding: 0;
-            opacity: 0.9;
+        .message.loading {
+            background: #dbeafe;
+            color: #1e40af;
         }
 
-        .toggle-setup:hover {
-            opacity: 1;
-        }
-
-        .loading {
+        .status {
             display: inline-block;
-            width: 12px;
-            height: 12px;
-            border: 2px solid #e5e7eb;
-            border-top-color: #667eea;
+            padding: 6px 12px;
+            background: #dcfce7;
+            color: #166534;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 12px;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        #dashboardOutput {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 4px solid #667eea;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+
+        .table-container {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #f9fafb;
+            padding: 12px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        td {
+            padding: 12px;
+            font-size: 13px;
+            color: #374151;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #667eea;
+            border-top-color: transparent;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
@@ -272,588 +311,267 @@
             to { transform: rotate(360deg); }
         }
 
-        .data-stats {
-            display: flex;
-            gap: 12px;
-            margin-top: 12px;
-            font-size: 12px;
-        }
-
-        .stat-item {
-            background: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: 1px solid #e5e7eb;
-        }
-
-        .stat-item strong {
-            color: #667eea;
-        }
-
-        @media (max-width: 640px) {
-            .container {
-                max-height: 100vh;
-                border-radius: 0;
-            }
-
-            .message {
-                max-width: 90%;
-            }
-
-            .header h1 {
-                font-size: 18px;
+        @media (max-width: 768px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
         <div class="header">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h1>iNews Data</h1>
-                    <p>Nielsen Rating Chatbot</p>
-                </div>
-                <button class="toggle-setup" onclick="toggleSetup()">Setup Data</button>
-            </div>
-            <div style="margin-top: 12px; font-size: 12px; opacity: 0.85;">
-                Status: <span id="status-text">Ready</span><span id="status-badge" class="status-badge">Offline</span>
-            </div>
+            <h1>🤖 Nielsen Analytics - Powered by Claude AI</h1>
+            <p>Chat dengan AI untuk analisis data Nielsen yang lebih natural dan intelligent</p>
+            <button class="setup-button" onclick="toggleSetup()">⚙️ Setup API</button>
         </div>
 
-        <div class="setup-section" id="setup-section">
-            <h3>📊 Setup Google Sheets API (Private)</h3>
+        <!-- Setup Panel -->
+        <div class="setup-panel" id="setupPanel">
+            <h3>Setup APIs</h3>
             
-            <div class="setup-info">
-                <strong>Langkah Setup:</strong><br>
-                1. Buat Google Sheet baru → Share dengan service account email<br>
-                2. Buat Google Cloud API key (Sheets API)<br>
-                3. Paste ID sheet & API key di bawah
+            <div class="setup-field">
+                <label>Claude API Key</label>
+                <input type="password" id="claudeApiKey" placeholder="sk-ant-...">
+                <button onclick="saveClaudeKey()">Save</button>
             </div>
 
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; color: #374151;">
-                    Google Sheet ID
-                </label>
-                <div class="setup-input">
-                    <input type="text" id="sheet-id" placeholder="1a2B3c4D5e6F7g8H9i0J1k2L3m4N5o6P7q8R9s0T" />
-                    <button onclick="saveSheetConfig()">Save</button>
-                </div>
+            <div class="setup-field">
+                <label>Google Sheet ID</label>
+                <input type="text" id="sheetId" placeholder="Sheet ID...">
+                <button onclick="saveSheetId()">Save</button>
             </div>
 
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; color: #374151;">
-                    API Key (Google Sheets)
-                </label>
-                <div class="setup-input">
-                    <input type="password" id="api-key" placeholder="AIzaSy..." />
-                    <button onclick="saveAPIKey()">Save</button>
-                </div>
+            <div class="setup-field">
+                <label>Google Sheets API Key</label>
+                <input type="password" id="sheetsApiKey" placeholder="AIzaSy...">
+                <button onclick="saveSheetsKey()">Save</button>
             </div>
 
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; color: #374151;">
-                    Sheet Name (default: "A")
-                </label>
-                <div class="setup-input">
-                    <input type="text" id="sheet-name" placeholder="A" value="A" />
-                    <button onclick="saveSheetName()">Save</button>
-                </div>
+            <div class="setup-field">
+                <label>Sheet Name</label>
+                <input type="text" id="sheetName" value="A" placeholder="Sheet name...">
+                <button onclick="saveSheetName()">Save</button>
             </div>
 
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; color: #374151;">
-                    Atau Upload File Excel/CSV
-                </label>
-                <div class="file-upload">
-                    <input type="file" id="file-upload" accept=".xlsx,.xls,.csv" onchange="handleFileUpload(event)" />
-                </div>
-            </div>
-
-            <button onclick="testConnection()" style="padding: 10px 16px; background: #10b981; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;">
-                🔗 Test Connection
-            </button>
-
-            <div id="connection-status" style="margin-top: 12px; font-size: 12px;"></div>
+            <button style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 16px;" onclick="testConnection()">🔗 Test Connection</button>
         </div>
 
-        <div class="chat-container">
-            <div id="chat-messages">
-                <div class="message bot">
-                    👋 Selamat datang di <strong>iNews Data</strong>!<br><br>
-                    Saya bisa membantu Anda mencari informasi Nielsen rating. Coba tanya:
-                    <pre style="background: #f3f4f6; padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 12px;">
-• "Berapa share inews kemarin?"
-• "Ranking channel 04/01/2026?"
-• "Bandingkan inews vs tvone"
-• "TVR semua channel hari ini"</pre>
-                </div>
-            </div>
-
-            <div class="input-section">
-                <input 
-                    type="text" 
-                    id="question-input" 
-                    placeholder="Ketik pertanyaan Anda..." 
-                    onkeypress="if(event.key==='Enter') askQuestion()"
-                />
+        <!-- Chat Section -->
+        <div class="chat-section">
+            <div class="chat-input-wrapper">
+                <input type="text" id="questionInput" placeholder="Tanya tentang data Nielsen... Contoh: 'Berapa share inews bulan januari?', 'Analisis trend tvone', 'Apa insight dari data ranking channel?'" onkeypress="if(event.key==='Enter') askQuestion()">
                 <button onclick="askQuestion()">Tanya</button>
             </div>
+
+            <div id="chatMessages"></div>
+            <div id="connectionStatus"></div>
         </div>
+
+        <!-- Dashboard Output -->
+        <div id="dashboardOutput"></div>
     </div>
 
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script>
         let sheetData = [];
         let config = {
+            claudeApiKey: localStorage.getItem('claude-key') || '',
             sheetId: localStorage.getItem('sheet-id') || '',
-            apiKey: localStorage.getItem('api-key') || '',
+            sheetsApiKey: localStorage.getItem('sheets-key') || '',
             sheetName: localStorage.getItem('sheet-name') || 'A'
         };
 
-        if (config.sheetId && config.apiKey) {
-            updateStatusBadge('connected', 'Connected');
-        }
-
         function toggleSetup() {
-            const setupSection = document.getElementById('setup-section');
-            setupSection.classList.toggle('active');
-            document.getElementById('sheet-id').value = config.sheetId;
-            document.getElementById('sheet-name').value = config.sheetName;
+            document.getElementById('setupPanel').classList.toggle('active');
         }
 
-        function saveSheetConfig() {
-            const id = document.getElementById('sheet-id').value.trim();
-            if (!id) {
-                alert('Masukkan Google Sheet ID');
-                return;
-            }
+        function saveClaudeKey() {
+            const key = document.getElementById('claudeApiKey').value.trim();
+            if (!key) { alert('Masukkan Claude API Key'); return; }
+            config.claudeApiKey = key;
+            localStorage.setItem('claude-key', key);
+            alert('Claude API Key saved!');
+        }
+
+        function saveSheetId() {
+            const id = document.getElementById('sheetId').value.trim();
+            if (!id) { alert('Masukkan Sheet ID'); return; }
             config.sheetId = id;
             localStorage.setItem('sheet-id', id);
-            alert('Sheet ID tersimpan!');
+            alert('Sheet ID saved!');
         }
 
-        function saveAPIKey() {
-            const key = document.getElementById('api-key').value.trim();
-            if (!key) {
-                alert('Masukkan API Key');
-                return;
-            }
-            config.apiKey = key;
-            localStorage.setItem('api-key', key);
-            alert('API Key tersimpan!');
+        function saveSheetsKey() {
+            const key = document.getElementById('sheetsApiKey').value.trim();
+            if (!key) { alert('Masukkan Sheets API Key'); return; }
+            config.sheetsApiKey = key;
+            localStorage.setItem('sheets-key', key);
+            alert('Sheets API Key saved!');
         }
 
         function saveSheetName() {
-            const name = document.getElementById('sheet-name').value.trim() || 'A';
+            const name = document.getElementById('sheetName').value.trim() || 'A';
             config.sheetName = name;
             localStorage.setItem('sheet-name', name);
-            alert(`Sheet name "` + name + `" tersimpan!`);
-        }
-
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    let data = [];
-                    if (file.name.endsWith('.csv')) {
-                        Papa.parse(file, {
-                            header: true,
-                            skipEmptyLines: true,
-                            complete: (results) => {
-                                sheetData = results.data;
-                                updateStatusBadge('connected', 'File Loaded: ' + sheetData.length + ' rows');
-                                addMessage('bot', '✅ File berhasil dimuat! ' + sheetData.length + ' data points siap diquery.');
-                            }
-                        });
-                    } else {
-                        const workbook = XLSX.read(e.target.result, { type: 'array' });
-                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                        data = XLSX.utils.sheet_to_json(worksheet);
-                        sheetData = data;
-                        updateStatusBadge('connected', 'File Loaded: ' + sheetData.length + ' rows');
-                        addMessage('bot', '✅ File berhasil dimuat! ' + sheetData.length + ' data points siap diquery.');
-                    }
-                } catch (error) {
-                    updateStatusBadge('error', 'Load Error');
-                    addMessage('error', '❌ Gagal membaca file: ' + error.message);
-                }
-            };
-            reader.readAsArrayBuffer(file);
+            alert('Sheet Name saved!');
         }
 
         async function testConnection() {
-            if (!config.apiKey || !config.sheetId) {
-                alert('Lengkapi Sheet ID dan API Key terlebih dahulu');
+            if (!config.sheetsApiKey || !config.sheetId) {
+                alert('Lengkapi Sheet ID dan Sheets API Key');
                 return;
             }
 
-            const statusDiv = document.getElementById('connection-status');
-            statusDiv.innerHTML = '<span class="loading"></span> Testing connection...';
-
             try {
-                const url = `https://sheets.googleapis.com/v4/spreadsheets/${config.sheetId}/values/${config.sheetName}?key=${config.apiKey}`;
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${config.sheetId}/values/${config.sheetName}?key=${config.sheetsApiKey}`;
                 const response = await fetch(url);
-                
-                if (!response.ok) throw new Error('API Error: ' + response.status);
+                if (!response.ok) throw new Error('Sheet Error: ' + response.status);
                 
                 const data = await response.json();
                 sheetData = convertSheetsToJSON(data.values);
                 
-                updateStatusBadge('connected', 'Connected');
-                statusDiv.innerHTML = '✅ <strong style="color: #10b981;">Connected!</strong> ' + sheetData.length + ' rows loaded.';
-                addMessage('bot', '✅ Berhasil terhubung ke Google Sheets!\n\n' + sheetData.length + ' data points siap diquery.');
+                updateStatus('✅ Connected! ' + sheetData.length + ' rows loaded.', 'success');
             } catch (error) {
-                updateStatusBadge('error', 'Error');
-                statusDiv.innerHTML = '❌ <strong style="color: #dc2626;">Connection Failed</strong><br>' + error.message;
-                addMessage('error', 'Gagal connect ke Google Sheets: ' + error.message);
+                updateStatus('❌ Connection Failed: ' + error.message, 'error');
             }
         }
 
         function convertSheetsToJSON(values) {
             if (!values || values.length === 0) return [];
-            
-            // Detect if first row is header or data
-            const firstRow = values[0];
-            let isHeader = false;
-            let headers = [];
-            let dataRows = values;
-            
-            // Check if first row looks like header (contains text like "Date", "Channel", etc)
-            const commonHeaders = ['date', 'channel', 'tvr', 'share', 'year', 'month', 'week', 'rating', 'tanggal', 'saluran'];
-            const firstRowLower = firstRow.map(h => String(h).toLowerCase());
-            
-            if (firstRowLower.some(h => commonHeaders.some(ch => h.includes(ch)))) {
-                isHeader = true;
-                headers = firstRow;
-                dataRows = values.slice(1);
-            } else {
-                // No header detected, create generic headers
-                headers = firstRow.map((_, i) => `Col${i + 1}`);
-                dataRows = values;
-            }
-            
-            // Convert to JSON
-            return dataRows.map(row => {
+            const headers = values[0];
+            return values.slice(1).map(row => {
                 const obj = {};
-                headers.forEach((header, index) => {
-                    obj[String(header).trim()] = row[index] || '';
-                });
+                headers.forEach((h, i) => obj[String(h).trim()] = row[i] || '');
                 return obj;
-            }).filter(row => Object.values(row).some(v => v)); // Remove empty rows
+            }).filter(r => Object.values(r).some(v => v));
         }
 
-        function updateStatusBadge(status, text) {
-            const badge = document.getElementById('status-badge');
-            const statusText = document.getElementById('status-text');
-            statusText.textContent = text;
-            badge.className = 'status-badge';
-            if (status === 'error') badge.classList.add('error');
-        }
-
-        function parseQuestion(q) {
-            const lower = q.toLowerCase().trim();
-            
-            let channel = null;
-            const channels = ['inews', 'tvone', 'metro', 'kompastv', 'rtv', 'mdtv', 'rcti', 'sctv', 'mnctv', 'trans'];
-            for (let ch of channels) {
-                if (lower.includes(ch)) {
-                    channel = ch.toUpperCase();
-                    break;
-                }
-            }
-            
-            let date = null;
-            const dateMatch = q.match(/\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2}/);
-            if (dateMatch) {
-                date = dateMatch[0];
-            }
-            
-            return { question: lower, channel, date };
-        }
-        
-        // Helper: find column by keyword (flexible)
-        function findColumn(columnName) {
-            if (!sheetData || sheetData.length === 0) return null;
-            const row = sheetData[0];
-            const keys = Object.keys(row);
-            const search = columnName.toLowerCase();
-            return keys.find(k => k.toLowerCase().includes(search));
-        }
-
-        // Normalize number (handle both dot and comma)
         function normalizeNumber(val) {
             if (!val) return val;
-            const str = String(val).trim();
-            // Replace comma with dot
-            return str.replace(',', '.');
+            return String(val).trim().replace(',', '.');
         }
-        
-        function queryData(channel, date) {
-            if (!sheetData || sheetData.length === 0) return [];
-            
-            // Find column names flexibly
-            const channelCol = findColumn('channel') || findColumn('saluran');
-            const dateCol = findColumn('date') || findColumn('tanggal');
-            
-            return sheetData.filter(row => {
-                if (channel && channelCol) {
-                    const rowChannel = String(row[channelCol]).toUpperCase().trim();
-                    if (!rowChannel.includes(channel)) return false;
-                }
-                if (date && dateCol) {
-                    const rowDate = String(row[dateCol]).trim();
-                    if (!rowDate.includes(date)) return false;
-                }
-                return true;
-            });
+
+        function addChatMessage(role, text) {
+            const container = document.getElementById('chatMessages');
+            const msg = document.createElement('div');
+            msg.className = 'message ' + role;
+            msg.innerHTML = text;
+            container.appendChild(msg);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updateStatus(text, type = 'info') {
+            const status = document.getElementById('connectionStatus');
+            status.innerHTML = `<div class="status ${type === 'error' ? 'error' : ''}">${text}</div>`;
         }
 
         async function askQuestion() {
-            const input = document.getElementById('question-input');
+            const input = document.getElementById('questionInput');
             const q = input.value.trim();
             if (!q) return;
-            
-            addMessage('user', q);
+
+            addChatMessage('user', q);
             input.value = '';
 
-            if (sheetData.length === 0) {
-                addMessage('error', '⚠️ Data belum dimuat. Setup Google Sheets atau upload file Excel/CSV terlebih dahulu.');
+            if (!config.claudeApiKey) {
+                addChatMessage('error', '❌ Claude API Key belum di-setup. Buka ⚙️ Setup API');
                 return;
             }
 
-            const parsed = parseQuestion(q);
-            const results = queryData(parsed.channel, parsed.date);
-            
-            // Find column names flexibly
-            const channelCol = findColumn('channel') || findColumn('saluran');
-            const shareCol = findColumn('share') || findColumn('presentase') || findColumn('persen');
-            const dateCol = findColumn('date') || findColumn('tanggal');
-            const tvrCol = findColumn('tvr') || findColumn('rating');
-            
-            let answer = '';
-            
-            // Check for trend/chart queries
-            if (q.toLowerCase().includes('trend') || q.toLowerCase().includes('grafik') || q.toLowerCase().includes('chart')) {
-                // Extract month and year from query
-                const months = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
-                let month = null;
-                let monthName = '';
-                
-                for (let i = 0; i < months.length; i++) {
-                    if (q.toLowerCase().includes(months[i])) {
-                        month = i + 1;
-                        monthName = months[i].charAt(0).toUpperCase() + months[i].slice(1);
-                        break;
-                    }
-                }
-                
-                const yearMatch = q.match(/20\d{2}|2\d{3}/);
-                const year = yearMatch ? parseInt(yearMatch[0]) : null;
-                
-                if (parsed.channel) {
-                    const trendResponse = generateTrendResponse(parsed.channel, month, year);
-                    if (trendResponse) {
-                        answer = trendResponse;
-                    } else {
-                        answer = `❌ Data trend untuk ${parsed.channel} ${monthName || ''} ${year || ''} tidak ditemukan.`;
-                    }
-                } else {
-                    answer = `🤔 Silakan sebutkan channel. Contoh: "trend share inews januari 2026"`;
-                }
-            } else if (q.toLowerCase().includes('ranking') && (q.toLowerCase().includes('chart') || q.toLowerCase().includes('grafik'))) {
-                // Ranking with chart
-                if (sheetData.length > 0 && channelCol && shareCol) {
-                    const sorted = [...sheetData].sort((a, b) => parseFloat(normalizeNumber(b[shareCol])) - parseFloat(normalizeNumber(a[shareCol])));
-                    const top10 = sorted.slice(0, 10);
-                    const labels = top10.map(r => r[channelCol]);
-                    const data = top10.map(r => parseFloat(normalizeNumber(r[shareCol])));
-                    
-                    answer = `🏆 <strong>Ranking Top 10 Channel</strong><br><br>`;
-                    answer += top10.map((r, i) => `${i+1}. ${r[channelCol]}: ${normalizeNumber(r[shareCol])}`).join('<br>');
-                    answer += '<br><br>';
-                    answer += generateChart('bar', labels, data, 'Share Channel');
-                } else {
-                    answer = `❌ Tidak ada data ranking.`;
-                }
-            } else if (false) { // placeholder for other chart types
-                // future chart types
-            } else {
-                // Regular text queries
-                if (parsed.question.includes('berapa share') || parsed.question.includes('share')) {
-                if (parsed.channel && results.length > 0 && shareCol) {
-                    const share = normalizeNumber(results[0][shareCol]);
-                    answer = `📊 Share ${parsed.channel} adalah <strong>${share}</strong>`;
-                } else if (parsed.channel) {
-                    answer = `❌ Data untuk ${parsed.channel} tidak ditemukan.`;
-                } else if (results.length > 0 && channelCol && shareCol) {
-                    const items = results.map(r => `${r[channelCol]}: ${normalizeNumber(r[shareCol])}`).join('\n');
-                    answer = `📊 Share semua channel:\n\n${items}`;
-                } else {
-                    answer = `❌ Tidak ada data.`;
-                }
-            } else if (parsed.question.includes('ranking') || parsed.question.includes('peringkat')) {
-                if (sheetData.length > 0 && channelCol && shareCol) {
-                    const sorted = [...sheetData].sort((a, b) => parseFloat(normalizeNumber(b[shareCol])) - parseFloat(normalizeNumber(a[shareCol])));
-                    const ranking = sorted.map((r, i) => `${i+1}. ${r[channelCol]}: ${normalizeNumber(r[shareCol])}`).slice(0, 10).join('\n');
-                    answer = `🏆 Ranking:\n\n${ranking}`;
-                } else {
-                    answer = `❌ Tidak ada data ranking.`;
-                }
-            } else if (parsed.question.includes('bandingkan') || parsed.question.includes('compare')) {
-                if (parsed.channel && results.length > 0) {
-                    const item = results[0];
-                    const displayData = Object.entries(item)
-                        .filter(([k, v]) => v)
-                        .map(([k, v]) => {
-                            const normalizedVal = normalizeNumber(v);
-                            return `${k}: ${normalizedVal}`;
-                        })
-                        .join('\n');
-                    answer = `📊 Data ${parsed.channel}:\n\n${displayData}`;
-                } else {
-                    answer = `❌ Data tidak ditemukan.`;
-                }
-            } else if (parsed.question.includes('tvr') || parsed.question.includes('rating')) {
-                if (parsed.channel && results.length > 0 && tvrCol) {
-                    const tvr = normalizeNumber(results[0][tvrCol]);
-                    answer = `📺 TVR ${parsed.channel} adalah <strong>${tvr}</strong>`;
-                } else {
-                    answer = `❌ Data TVR tidak ditemukan.`;
-                }
-                } else {
-                    // Generic data display
-                    if (results.length > 0) {
-                        const item = results[0];
-                        const displayData = Object.entries(item)
-                            .filter(([k, v]) => v)
-                            .map(([k, v]) => `${k}: ${v}`)
-                            .join('\n');
-                        answer = `📊 Data:\n\n${displayData}`;
-                    } else {
-                        answer = `🤔 Coba tanya tentang:\n\n• Share channel\n• Ranking\n• TVR/Rating\n• Bandingkan channel\n• Trend share [channel] [bulan] [tahun]`;
-                    }
-                }
+            if (sheetData.length === 0) {
+                addChatMessage('error', '⚠️ Data belum dimuat. Test Connection terlebih dahulu.');
+                return;
             }
 
-            setTimeout(() => addMessage('bot', answer), 200);
-        }
+            // Show loading
+            addChatMessage('loading', '<span class="loading-spinner"></span> Claude sedang menganalisis...');
 
-        function addMessage(role, text) {
-            const messagesDiv = document.getElementById('chat-messages');
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'message ' + role;
-            msgDiv.innerHTML = text;
-            messagesDiv.appendChild(msgDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
+            try {
+                // Prepare data context for Claude
+                const dataContext = `
+Data Nielsen Rating (${sheetData.length} records):
+${JSON.stringify(sheetData.slice(0, 20), null, 2)}
+...dan ${Math.max(0, sheetData.length - 20)} records lainnya
 
-        // Generate Chart HTML using Plotly
-        function generateChart(type, labels, dataValues, title, chartColor = '#667eea') {
-            const chartId = 'chart-' + Date.now();
-            
-            // Load Plotly
-            const script = document.createElement('script');
-            script.src = 'https://cdn.plot.ly/plotly-latest.min.js';
-            script.onload = function() {
-                setTimeout(() => {
-                    const trace = {
-                        x: labels,
-                        y: dataValues,
-                        name: title,
-                        type: type === 'line' ? 'scatter' : 'bar',
-                        mode: type === 'line' ? 'lines+markers' : undefined,
-                        line: { color: chartColor, width: 2 },
-                        marker: { 
-                            color: type === 'bar' ? 'rgba(102, 126, 234, 0.7)' : chartColor, 
-                            size: type === 'line' ? 8 : undefined 
-                        },
-                        fill: type === 'line' ? 'tozeroy' : undefined
-                    };
-                    
-                    const layout = {
-                        title: title,
-                        xaxis: { title: 'Date' },
-                        yaxis: { title: 'Value' },
-                        plot_bgcolor: '#f9f9f9',
-                        paper_bgcolor: 'white',
-                        font: { size: 12 },
-                        margin: { l: 50, r: 50, t: 50, b: 50 },
-                        height: 350
-                    };
-                    
-                    const config = { responsive: true, displayModeBar: false };
-                    
-                    if (document.getElementById(chartId)) {
-                        window.Plotly.newPlot(chartId, [trace], layout, config);
-                    }
-                }, 100);
-            };
-            
-            document.body.appendChild(script);
-            return `<div id="${chartId}" style="width: 100%; margin-top: 15px;"></div>`;
-        }
+Instruksi: Analisis data Nielsen Rating dengan natural language processing. 
+Berikan jawaban yang comprehensive dengan insights dan rekomendasi.
+Jika diminta untuk chart/dashboard, respond dengan format yang bisa di-parse untuk visualisasi.
+Format response dengan jelas dan professional.
+`;
 
-        // Extract trend data dan generate response dengan chart
-        function generateTrendResponse(channel, month, year) {
-            if (!sheetData || sheetData.length === 0) return null;
-            
-            const channelCol = findColumn('channel') || findColumn('saluran');
-            const dateCol = findColumn('date') || findColumn('tanggal');
-            const shareCol = findColumn('share') || findColumn('presentase');
-            
-            // Filter data by channel, month, year
-            const trendData = sheetData.filter(row => {
-                const rowChannel = String(row[channelCol] || '').toUpperCase().trim();
-                const rowDate = String(row[dateCol] || '').trim();
-                
-                if (channel && !rowChannel.includes(channel)) return false;
-                
-                // Parse date and check month/year
-                if (month || year) {
-                    const parts = rowDate.split('/');
-                    if (parts.length === 3) {
-                        const d = parseInt(parts[0]);
-                        const m = parseInt(parts[1]);
-                        const y = parseInt(parts[2]);
-                        if (month && m !== month) return false;
-                        if (year && y !== year) return false;
-                    }
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': config.claudeApiKey,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-3-5-sonnet-20241022',
+                        max_tokens: 2000,
+                        messages: [
+                            {
+                                role: 'user',
+                                content: `${dataContext}\n\nUser Query: ${q}`
+                            }
+                        ]
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error?.message || 'Claude API Error');
                 }
-                return true;
+
+                const data = await response.json();
+                const claudeResponse = data.content[0].text;
+
+                // Remove the loading message
+                const messages = document.querySelectorAll('.message');
+                messages[messages.length - 1].remove();
+
+                // Add Claude's response
+                addChatMessage('assistant', claudeResponse);
+
+                // Try to render dashboard if response contains data visualization hints
+                if (claudeResponse.toLowerCase().includes('tabel') || claudeResponse.toLowerCase().includes('chart')) {
+                    renderDataTableFromResponse();
+                }
+
+            } catch (error) {
+                const messages = document.querySelectorAll('.message');
+                messages[messages.length - 1].remove();
+                addChatMessage('error', '❌ Error: ' + error.message);
+            }
+        }
+
+        function renderDataTableFromResponse() {
+            if (sheetData.length === 0) return;
+
+            let html = '<div class="table-container"><div class="table-title">📊 Data Overview</div>';
+            html += '<table><tr><th>Date</th><th>Channel</th><th>Share</th><th>TVR</th></tr>';
+            
+            sheetData.slice(0, 10).forEach(r => {
+                html += '<tr>';
+                html += `<td>${Object.values(r)[0]}</td>`;
+                html += `<td>${Object.values(r)[1]}</td>`;
+                html += `<td>${Object.values(r)[Object.keys(r).length - 1]}</td>`;
+                html += `<td>${Object.values(r)[Object.keys(r).length - 2]}</td>`;
+                html += '</tr>';
             });
             
-            if (trendData.length === 0) return null;
-            
-            // Prepare chart data
-            const labels = trendData.map(r => String(r[dateCol] || ''));
-            const data = trendData.map(r => parseFloat(normalizeNumber(r[shareCol] || 0)));
-            
-            // Calculate stats
-            const avg = (data.reduce((a, b) => a + b, 0) / data.length).toFixed(2);
-            const max = Math.max(...data).toFixed(2);
-            const min = Math.min(...data).toFixed(2);
-            const maxDate = labels[data.indexOf(Math.max(...data))];
-            const minDate = labels[data.indexOf(Math.min(...data))];
-            
-            // Text response
-            const textResponse = `
-📊 <strong>Trend Share ${channel} ${month ? 'Bulan ' + month : ''} ${year}</strong><br><br>
-Rata-rata: <strong>${avg}%</strong><br>
-Tertinggi: <strong>${max}%</strong> (${maxDate})<br>
-Terendah: <strong>${min}%</strong> (${minDate})<br>
-Total data points: <strong>${data.length}</strong>
-            `;
-            
-            // Chart
-            const chartHtml = generateChart('line', labels, data, `Share ${channel}`);
-            
-            return textResponse + '<br><br>' + chartHtml;
+            html += '</table></div>';
+            document.getElementById('dashboardOutput').innerHTML = html;
         }
 
-        document.getElementById('question-input').focus();
+        // Load config on page load
+        if (config.claudeApiKey) {
+            updateStatus('✅ Claude API Key sudah di-setup', 'success');
+        }
+
+        document.getElementById('questionInput').focus();
     </script>
 </body>
 </html>
